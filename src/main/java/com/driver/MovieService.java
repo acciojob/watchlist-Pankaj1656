@@ -1,5 +1,4 @@
 package com.driver;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -9,10 +8,8 @@ import java.util.Optional;
 @Service
 public class MovieService {
     @Autowired
-    MovieRepository movieRepository;
-
+    private MovieRepository movieRepository;
     public void addMovie(Movie movie) {
-
         movieRepository.addMovie(movie);
     }
 
@@ -20,49 +17,60 @@ public class MovieService {
         movieRepository.addDirector(director);
     }
 
-    public void movieDirectorPair(String movie, String director) {
-        Optional<Movie> moviefnd=movieRepository.findMovie(movie);
-        Optional<Director> findDirector=movieRepository.findDirector(director);
-        if(moviefnd.isEmpty() || findDirector.isEmpty()){
-            throw new RuntimeException("Entity not found");
+    public void addMovieDirectorPair(String movie, String director) throws NotFoundException {
+        Optional<Movie> movieFound = movieRepository.findMovie(movie);
+        Optional<Director> directorFound = movieRepository.findDirector(director);
+
+        if(movieFound.isEmpty() || directorFound.isEmpty()){
+            throw new NotFoundException("Entities Not Present");
         }
-        movieRepository.addMovieDirectorPair(movie,director);
+        List<String> list = movieRepository.getAllMoviesByDirector(director);
+        list.add(movie);
+        movieRepository.addDirectorMovie(director,list);
+        Director dir = directorFound.get();
+        dir.setNumberOfMovies(dir.getNumberOfMovies()+1);
+//        movieRepository.addMovieDirectorPair(movie,director);
     }
 
-    public Movie getMovieByName(String name) {
-        Optional<Movie> movieFnd=movieRepository.getMovieByName(name);
-        if(movieFnd.isEmpty()){
-            throw new RuntimeException("Movie by given name not found");
-        }
-        return movieFnd.get();
+    public Movie getMovieByName(String name) throws NotFoundException {
+        Optional<Movie> movie = movieRepository.getMovieByName(name);
+        if(movie.isEmpty())
+            throw new NotFoundException("The requested movie is not Present");
+        return movie.get();
     }
 
-    public Director getDiectorByName(String name) {
-        Optional<Director> directorFnd=movieRepository.getDirectorByName(name);
-        if(directorFnd.isEmpty()){
-            throw new RuntimeException("Director by given name not found");
-        }
-        return directorFnd.get();
+    public Director getDirectorByName(String name) throws NotFoundException {
+        Optional<Director> director = movieRepository.getDirectorByName(name);
+        if(director.isEmpty())
+            throw new NotFoundException("The requested director is NOT PRESENT");
+        return director.get();
     }
 
-    public List<String> getMoviesByDirector(String name) {
-        List<String> movies=movieRepository.getMovieByDirector(name);
-        if(movies.isEmpty()){
-            throw new RuntimeException("Not present");
-        }
-        return movies;
+    public List<String> getMoviesByDirectorName(String director) throws NotFoundException {
+        List<String> list = movieRepository.getMoviesByDirector(director);
+        if(list.isEmpty())
+            throw new NotFoundException("NOT PRESENT");
+        return list;
     }
 
-    public List<String> getAllMovies() {
-        List<String> movies=movieRepository.getAllMovies();
-        return movies;
+    public List<String> findAllMovies() {
+        return movieRepository.findAllMovies();
     }
 
     public void deleteDirectorByName(String name) {
-        movieRepository.deleteDirectorByName(name);
+        List<String> movie = getMoviesByDirectorName(name);
+
+        for(String mov : movie){
+            movieRepository.deleteMovie(mov);
+        }
+        movieRepository.deleteDirector(name);
     }
 
     public void deleteAllDirectors() {
-        movieRepository.deleteAllDirectors();
+        List<String> directors = movieRepository.findAllDirector();
+        for(String director : directors){
+            this.deleteDirectorByName(director);
+        }
+
     }
 }
